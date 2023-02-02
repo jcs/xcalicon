@@ -67,6 +67,7 @@ main(int argc, char* argv[])
 	XEvent event;
 	XSizeHints *hints;
 	XGCValues gcv;
+	XWindowAttributes xgwa;
 	struct pollfd pfd[2];
 	struct sigaction act;
 	char *display = NULL;
@@ -130,6 +131,13 @@ main(int argc, char* argv[])
 	    &xinfo.digits_pm_attrs) != 0)
 		errx(1, "XpmCreatePixmapFromData failed");
 
+	XGetWindowAttributes(xinfo.dpy, xinfo.win, &xgwa);
+	xinfo.icon_pm = XCreatePixmap(xinfo.dpy,
+	    RootWindow(xinfo.dpy, xinfo.screen),
+	    xinfo.calendar_pm_attrs.width,
+	    xinfo.calendar_pm_attrs.height,
+	    xgwa.depth);
+
 	hints = XAllocSizeHints();
 	if (!hints)
 		err(1, "XAllocSizeHints");
@@ -180,10 +188,10 @@ main(int argc, char* argv[])
 		}
 	}
 
-	XFreePixmap(xinfo.dpy, xinfo.calendar_pm); XSync(xinfo.dpy, False);
-	XFreePixmap(xinfo.dpy, xinfo.calendar_pm_mask); XSync(xinfo.dpy, False);
-	XFreePixmap(xinfo.dpy, xinfo.digits_pm); XSync(xinfo.dpy, False);
-	XFreePixmap(xinfo.dpy, xinfo.icon_pm); XSync(xinfo.dpy, False);
+	XFreePixmap(xinfo.dpy, xinfo.calendar_pm);
+	XFreePixmap(xinfo.dpy, xinfo.calendar_pm_mask);
+	XFreePixmap(xinfo.dpy, xinfo.digits_pm);
+	XFreePixmap(xinfo.dpy, xinfo.icon_pm);
 	XDestroyWindow(xinfo.dpy, xinfo.win);
 	XFree(hints);
 	XCloseDisplay(xinfo.dpy);
@@ -241,22 +249,11 @@ redraw_icon(int update_win)
 	if (tm->tm_mday == last_day && !update_win)
 		return;
 
-	XGetWindowAttributes(xinfo.dpy, xinfo.win, &xgwa);
-
 	if (tm->tm_mday != last_day) {
 #ifdef DEBUG
 		printf("day changed, rebuilding icon\n");
 #endif
 		last_day = tm->tm_mday;
-
-		if (xinfo.icon_pm)
-			XFreePixmap(xinfo.dpy, xinfo.icon_pm);
-
-		xinfo.icon_pm = XCreatePixmap(xinfo.dpy,
-		    RootWindow(xinfo.dpy, xinfo.screen),
-		    xinfo.calendar_pm_attrs.width,
-		    xinfo.calendar_pm_attrs.height,
-		    xgwa.depth);
 
 		XCopyArea(xinfo.dpy, xinfo.calendar_pm, xinfo.icon_pm, xinfo.gc,
 		    0, 0,
@@ -303,6 +300,7 @@ redraw_icon(int update_win)
 #ifdef DEBUG
 		printf("updating window\n");
 #endif
+		XGetWindowAttributes(xinfo.dpy, xinfo.win, &xgwa);
 		xo = (xgwa.width / 2) - (xinfo.calendar_pm_attrs.width / 2);
 		yo = (xgwa.height / 2) - (xinfo.calendar_pm_attrs.height / 2);
 		XClearWindow(xinfo.dpy, xinfo.win);
@@ -314,5 +312,7 @@ redraw_icon(int update_win)
 		    xinfo.calendar_pm_attrs.width,
 		    xinfo.calendar_pm_attrs.height,
 		    xo, yo);
+		XSetClipMask(xinfo.dpy, xinfo.gc, xinfo.calendar_pm_mask);
+		XSetClipOrigin(xinfo.dpy, xinfo.gc, 0, 0);
 	}
 }
