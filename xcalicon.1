@@ -7,14 +7,21 @@
 .Sh SYNOPSIS
 .Nm
 .Op Fl d Ar display
+.Op Fl f Ar format
 .Sh DESCRIPTION
 .Nm
 shows the current date as an icon, and the time as the icon's title.
 Un-iconifying the program shows the same icon in a small window.
 .Sh OPTIONS
 .Bl -tag -width Ds
-.It Fl d
-Use a different X11 display.
+.It Fl d Ar display
+Use a different X11 display named
+.Ar display .
+.It Fl f Ar format
+Use a custom
+.Fn strftime 3
+format string instead of the default
+.Fa "%a %H:%M" .
 .El
 .Sh AUTHORS
 .Nm

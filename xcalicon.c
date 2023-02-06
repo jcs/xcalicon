@@ -46,6 +46,7 @@ struct {
 	Pixmap digits_pm_mask;
 	XpmAttributes digits_pm_attrs;
 	Pixmap icon_pm;
+	char *title_fmt;
 } xinfo = { 0 };
 
 extern char *__progname;
@@ -58,8 +59,9 @@ int	exit_msg[2];
 int	last_day = 0;
 int	last_min = -1;
 
-#define WINDOW_WIDTH	200
-#define WINDOW_HEIGHT	100
+#define WINDOW_WIDTH		200
+#define WINDOW_HEIGHT		100
+#define DEFAULT_TITLE_FMT	"%a %H:%M"
 
 int
 main(int argc, char* argv[])
@@ -73,10 +75,13 @@ main(int argc, char* argv[])
 	char *display = NULL;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "d:")) != -1) {
+	while ((ch = getopt(argc, argv, "d:f:")) != -1) {
 		switch (ch) {
 		case 'd':
 			display = optarg;
+			break;
+		case 'f':
+			xinfo.title_fmt = strdup(optarg);
 			break;
 		default:
 			usage();
@@ -92,6 +97,9 @@ main(int argc, char* argv[])
 	if (pledge("stdio") == -1)
 		err(1, "pledge");
 #endif
+
+	if (xinfo.title_fmt == NULL)
+		xinfo.title_fmt = strdup(DEFAULT_TITLE_FMT);
 
 	/* setup exit handler pipe that we'll poll on */
 	if (pipe2(exit_msg, O_CLOEXEC) != 0)
@@ -191,6 +199,7 @@ main(int argc, char* argv[])
 	XDestroyWindow(xinfo.dpy, xinfo.win);
 	XFree(hints);
 	XCloseDisplay(xinfo.dpy);
+	free(xinfo.title_fmt);
 
 	return 0;
 }
@@ -209,7 +218,7 @@ void
 usage(void)
 {
 	fprintf(stderr, "usage: %s %s\n", __progname,
-		"[-d display]");
+		"[-d display] [-f title date format]");
 	exit(1);
 }
 
@@ -218,7 +227,7 @@ redraw_icon(int update_win)
 {
 	XTextProperty title_prop;
 	XWindowAttributes xgwa;
-	char title[50];
+	char title[100];
 	char *titlep = (char *)&title;
 	int rc, dwidth, xo, yo;
 	struct tm *tm;
@@ -233,7 +242,7 @@ redraw_icon(int update_win)
 #endif
 		last_min = tm->tm_min;
 
-		strftime(title, sizeof(title), "%a %H:%M", tm);
+		strftime(title, sizeof(title), xinfo.title_fmt, tm);
 
 		/* update icon and window titles */
 		if (!(rc = XStringListToTextProperty(&titlep, 1, &title_prop)))
